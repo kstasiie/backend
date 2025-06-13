@@ -184,7 +184,6 @@ def update_song(song_title, new_title=None, new_artist_name=None,
         conn.close()
 
 def delete_song(song_title):
-    """Удаляет песню из БД"""
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
@@ -192,19 +191,20 @@ def delete_song(song_title):
             cursor.execute("SELECT id FROM songs WHERE title = ?", (song_title,))
             song = cursor.fetchone()
             if not song:
-                print(f"Песня с названием '{song_title}' не найдена.")
-                return
+                return False
 
             cursor.execute("DELETE FROM songs WHERE id = ?", (song['id'],))
             conn.commit()
-            print(f"Песня '{song_title}' успешно удалена.")
+            return True
         except sqlite3.Error as e:
-            print(f"Ошибка при удалении песни: {e}")
             conn.rollback()
+            print(f"Ошибка при удалении песни: {e}")
+            return False
         finally:
             conn.close()
     else:
-        print("Не удалось подключиться к базе данных.")
+        return False
+
 
 def delete_artist(artist_name):
     """Удаляет исполнителя и все связанные данные"""
@@ -216,7 +216,7 @@ def delete_artist(artist_name):
             artist = cursor.fetchone()
             if not artist:
                 print(f"Исполнитель с именем '{artist_name}' не найден.")
-                return
+                return  False
 
             artist_id = artist['id']
             cursor.execute("DELETE FROM songs WHERE artist_id = ?", (artist_id,))
@@ -224,13 +224,16 @@ def delete_artist(artist_name):
             cursor.execute("DELETE FROM artists WHERE id = ?", (artist_id,))
             conn.commit()
             print(f"Исполнитель '{artist_name}' и все его песни и альбомы успешно удалены.")
+            return True
         except sqlite3.Error as e:
-            print(f"Ошибка при удалении исполнителя: {e}")
             conn.rollback()
+            print(f"Ошибка при удалении исполнителя: {e}")
+            return False
         finally:
             conn.close()
     else:
         print("Не удалось подключиться к базе данных.")
+        return False
 
 def delete_album(album_name):
     """Удаляет альбом из БД"""
@@ -242,20 +245,23 @@ def delete_album(album_name):
             album = cursor.fetchone()
             if not album:
                 print(f"Альбом с названием '{album_name}' не найден.")
-                return
+                return False
 
             album_id = album['id']
-            cursor.execute("UPDATE songs SET album_id = NULL WHERE album_id = ?", (album_id,))
+            cursor.execute("DELETE FROM songs WHERE album_id = ?", (album_id,))
             cursor.execute("DELETE FROM albums WHERE id = ?", (album_id,))
             conn.commit()
             print(f"Альбом '{album_name}' успешно удален. Ссылки на него в песнях обнулены.")
+            return True
         except sqlite3.Error as e:
-            print(f"Ошибка при удалении альбома: {e}")
             conn.rollback()
+            print(f"Ошибка при удалении альбома: {e}")
+            return False
         finally:
             conn.close()
     else:
         print("Не удалось подключиться к базе данных.")
+        return False
 
 def search_tracks(query):
     """Поиск треков по названию, альбому или исполнителю"""
@@ -404,11 +410,11 @@ albums_file = "albums.txt"
 
 populate_database_from_txt(artists_file, genres_file, songs_file, albums_file)
 
-# Добавляем песни в базу данных
-# add_song("МакSим", "Знаешь ли ты", "Поп-музыка" , "Трудный возраст",2007)
-# add_song("ВИА 'Поющие сердца' ","Кто тебе сказал", "Русская эстрада", "Гигант", 1975)
-add_song("1234", "321", "zx1", "asd1", 123)
-# delete_song("ytrew1")
-# delete_song("qwerty")
-# delete_artist("123")
-update_song("321", "b", "q", "j", )
+# # Добавляем песни в базу данных
+# # add_song("МакSим", "Знаешь ли ты", "Поп-музыка" , "Трудный возраст",2007)
+# # add_song("ВИА 'Поющие сердца' ","Кто тебе сказал", "Русская эстрада", "Гигант", 1975)
+# add_song("1234", "321", "zx1", "asd1", 123)
+# # delete_song("ytrew1")
+# # delete_song("qwerty")
+# # delete_artist("123")
+# update_song("321", "b", "q", "j", )

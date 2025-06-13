@@ -67,12 +67,6 @@ async def update_song_route(
         raise HTTPException(status_code=404, detail="Песня не найдена или не удалось обновить")
     return {"message": "Песня успешно обновлена"}
 
-@app.delete("/songs/{song_title}")
-async def delete_song_route(song_title: str):
-    """Удаление песни из каталога"""
-    delete_song(song_title)
-    return {"message": "Песня успешно удалена"}
-
 @app.get("/albums/{album_name}")
 async def get_album(album_name: str):
     """Получение информации об альбоме"""
@@ -89,14 +83,26 @@ async def get_albums_by_artist(artist_name: str):
         raise HTTPException(status_code=404, detail="Исполнитель не найден или нет альбомов")
     return {"albums": albums}
 
+@app.delete("/songs/{song_title}")
+async def delete_song_route(song_title: str):
+    """Удаление песни из каталога"""
+    result = delete_song(song_title)
+    if not result:
+        raise HTTPException(status_code=404, detail="Песня не найдена")
+    return {"message": "Песня успешно удалена"}
+
 @app.delete("/artists/{artist_name}")
 async def delete_artist_route(artist_name: str):
     """Удаление исполнителя и всех связанных данных"""
-    delete_artist(artist_name)
-    return {"message": "Исполнитель и все связанные данные успешно удалены"}
+    result = delete_artist(artist_name)
+    if not result:
+        raise HTTPException(status_code=404, detail="Исполнитель не найден")
+    return {"message": "Исполнитель успешно удален"}
 
 @app.delete("/albums/{album_name}")
 async def delete_album_route(album_name: str):
     """Удаление альбома"""
-    delete_album(album_name)
+    result = delete_album(album_name)
+    if not result:
+        raise HTTPException(status_code=404, detail="Альбом не найден")
     return {"message": "Альбом успешно удален"}
