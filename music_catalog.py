@@ -329,6 +329,69 @@ def get_artist_albums(artist_name):
     finally:
         conn.close()
 
+def export_songs_to_docx(filename="songs_export.docx"):
+    conn = get_db_connection()
+    if not conn:
+        print("Не удалось подключиться к базе данных.")
+        return False
+
+    try:
+        from docx import Document
+        from docx.shared import Pt
+
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT 
+                s.title, s.year,
+                ar.name as artist,
+                al.name as album,
+                g.name as genre
+            FROM songs s
+            LEFT JOIN artists ar ON s.artist_id = ar.id
+            LEFT JOIN albums al ON s.album_id = al.id
+            LEFT JOIN genres g ON s.genre_id = g.id
+            ORDER BY ar.name, s.year
+        ''')
+
+        songs = cursor.fetchall()
+        if not songs:
+            print("Нет песен для экспорта.")
+            return False
+
+        # Создаем документ
+        doc = Document()
+        doc.add_heading('Каталог песен', level=1)
+
+        # Настройка стиля таблицы
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Table Grid'
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = 'Название'
+        hdr_cells[1].text = 'Исполнитель'
+        hdr_cells[2].text = 'Год'
+        hdr_cells[3].text = 'Альбом'
+        hdr_cells[4].text = 'Жанр'
+
+        # Заполняем таблицу данными
+        for song in songs:
+            row_cells = table.add_row().cells
+            row_cells[0].text = song['title']
+            row_cells[1].text = song['artist']
+            row_cells[2].text = str(song['year'])
+            row_cells[3].text = song['album'] or "—"
+            row_cells[4].text = song['genre'] or "—"
+
+        # Сохраняем файл
+        doc.save(filename)
+        print(f"Документ сохранен как {filename}")
+        return True
+
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return False
+    finally:
+        conn.close()
+
 # Инициализация БД
 create_database(DATABASE_FILE)
 
