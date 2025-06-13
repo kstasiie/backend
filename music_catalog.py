@@ -398,17 +398,49 @@ def export_songs_to_docx(filename="songs_export.docx"):
     finally:
         conn.close()
 
+def clear_database():
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            print("Не удалось получить соединение с базой данных")
+            return False
+
+        cursor = conn.cursor()
+
+        # Отключаем foreign keys
+        cursor.execute("PRAGMA foreign_keys = OFF;")
+
+        # Чистим таблицы
+        cursor.execute("DELETE FROM songs;")
+        cursor.execute("DELETE FROM albums;")
+        cursor.execute("DELETE FROM artists;")
+        cursor.execute("DELETE FROM genres;")
+
+        conn.commit()
+
+        # Включаем обратно
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        print("База данных успешно очищена")
+        return True
+
+    except Exception as e:
+        print(f"Ошибка при очистке базы данных: {e}")
+        return False
+
+    finally:
+        if conn:
+            conn.close()
 # Инициализация БД
 create_database(DATABASE_FILE)
 
 
 # Заполняем базу данных из TXT-файлов
-artists_file = "artists.txt"
-genres_file = "genres.txt"
-songs_file = "songs.txt"
-albums_file = "albums.txt"
+# artists_file = "artists.txt"
+# genres_file = "genres.txt"
+# songs_file = "songs.txt"
+# albums_file = "albums.txt"
 
-populate_database_from_txt(artists_file, genres_file, songs_file, albums_file)
+# populate_database_from_txt(artists_file, genres_file, songs_file, albums_file)
 
 # # Добавляем песни в базу данных
 # # add_song("МакSим", "Знаешь ли ты", "Поп-музыка" , "Трудный возраст",2007)
@@ -418,3 +450,5 @@ populate_database_from_txt(artists_file, genres_file, songs_file, albums_file)
 # # delete_song("qwerty")
 # # delete_artist("123")
 # update_song("321", "b", "q", "j", )
+# delete_album("Альбом2")
+search_tracks("")

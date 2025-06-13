@@ -9,7 +9,8 @@ from music_catalog import (
     delete_album,
     search_tracks,
     get_album_details,
-    get_artist_albums
+    get_artist_albums,
+    clear_database
 )
 
 app = FastAPI(
@@ -106,3 +107,11 @@ async def delete_album_route(album_name: str):
     if not result:
         raise HTTPException(status_code=404, detail="Альбом не найден")
     return {"message": "Альбом успешно удален"}
+
+@app.delete("/clear")
+async def clear_db():
+    """Полная очистка базы данных"""
+    success = clear_database()
+    if not success:
+        raise HTTPException(status_code=500, detail="Не удалось очистить базу данных. Проверь логи сервера для деталей.")
+    return {"message": "База данных успешно очищена"}
