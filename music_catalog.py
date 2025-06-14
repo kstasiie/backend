@@ -1,5 +1,8 @@
 import sqlite3
+import os
 from database import get_db_connection, create_database
+from docx import Document
+from docx.shared import Pt
 
 DATABASE_FILE = "music_catalog.db"
 
@@ -342,8 +345,7 @@ def export_songs_to_docx(filename="songs_export.docx"):
         return False
 
     try:
-        from docx import Document
-        from docx.shared import Pt
+        
 
         cursor = conn.cursor()
         cursor.execute('''
@@ -430,6 +432,8 @@ def clear_database():
     finally:
         if conn:
             conn.close()
+def delete_file(path: str):
+    os.remove(path)
 # Инициализация БД
 create_database(DATABASE_FILE)
 

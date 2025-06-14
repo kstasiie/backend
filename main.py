@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import PlainTextResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+import os
 from music_catalog import (
     add_song,
     update_song,
@@ -10,7 +11,9 @@ from music_catalog import (
     search_tracks,
     get_album_details,
     get_artist_albums,
-    clear_database
+    clear_database,
+    export_songs_to_docx,
+    delete_file
 )
 
 app = FastAPI(
@@ -115,3 +118,37 @@ async def clear_db():
     if not success:
         raise HTTPException(status_code=500, detail="Не удалось очистить базу данных. Проверь логи сервера для деталей.")
     return {"message": "База данных успешно очищена"}
+
+@app.get("/export/songs/docx", summary="Экспортировать каталог песен в DOCX")
+async def export_songs_to_docx_route(background_tasks: BackgroundTasks):
+    """
+    Экспортирует весь каталог песен в документ Word (.docx)
+    и предоставляет его для скачивания.
+    """
+    temp_filename = "songs_catalog.docx" # Временное имя файла на сервере
+
+    try:
+        # Вызываем вашу функцию для генерации DOCX
+        success = export_songs_to_docx(filename=temp_filename)
+
+        if not success:
+            # Если ваша функция export_songs_to_docx возвращает False
+            if not os.path.exists(temp_filename) or os.path.getsize(temp_filename) == 0:
+                 raise HTTPException(status_code=404, detail="Нет песен для экспорта или ошибка при создании документа")
+            else:
+                 raise HTTPException(status_code=500, detail="Ошибка при экспорте песен в DOCX")
+        
+        # Добавляем задачу на удаление файла после того, как он будет отправлен клиенту
+        background_tasks.add_task(delete_file, temp_filename)
+
+        # Возвращаем файл в качестве ответа
+        return FileResponse(
+            path=temp_filename,
+            filename="Каталог_песен.docx", # Имя файла, которое увидит пользователь при скачивании
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except Exception as e:
+        # В случае любой непредвиденной ошибки
+        if os.path.exists(temp_filename):
+            delete_file(temp_filename) # Попытаться удалить, если файл был создан
+        raise HTTPException(status_code=500, detail=f"Непредвиденная ошибка сервера: {str(e)}")
