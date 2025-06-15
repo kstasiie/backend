@@ -59,8 +59,12 @@ def populate_database_from_txt(artists_file, genres_file, songs_file, albums_fil
         print("Не удалось подключиться к базе данных.")
 
 def add_song(artist_name, title, genre_name, album_name, year):
-    """Добавляет новую песню в БД"""
-    conn = get_db_connection()
+    """
+    Добавляет новую песню в БД.
+    Обрабатывает необязательные поля (жанр, альбом, год)
+    в соответствии с требованиями NOT NULL в схеме БД.
+    """
+    conn = get_db_connection() # Убедитесь, что get_db_connection() определена и доступна
     if conn:
         cursor = conn.cursor()
         try:
@@ -74,40 +78,62 @@ def add_song(artist_name, title, genre_name, album_name, year):
                 artist_id = artist['id']
 
             # Проверяем/добавляем жанр
-            cursor.execute("SELECT id FROM genres WHERE name = ?", (genre_name,))
-            genre = cursor.fetchone()
-            if genre is None:
-                cursor.execute("INSERT INTO genres (name) VALUES (?)", (genre_name,))
-                genre_id = cursor.lastrowid
-            else:
-                genre_id = genre['id']
+            # Если genre_name пустой или None, genre_id будет NULL
+            genre_id = None 
+            if genre_name: # Только если genre_name не пустой/None
+                cursor.execute("SELECT id FROM genres WHERE name = ?", (genre_name,))
+                genre = cursor.fetchone()
+                if genre is None:
+                    cursor.execute("INSERT INTO genres (name) VALUES (?)", (genre_name,))
+                    genre_id = cursor.lastrowid
+                else:
+                    genre_id = genre['id']
 
             # Проверяем/добавляем альбом
-            cursor.execute("SELECT id FROM albums WHERE name = ? AND artist_id = ?",
-                          (album_name, artist_id))
-            album = cursor.fetchone()
-            if album is None:
-                cursor.execute("INSERT INTO albums (name, artist_id) VALUES (?, ?)",
-                             (album_name, artist_id))
-                album_id = cursor.lastrowid
-            else:
-                album_id = album['id']
+            # Если album_name пустой или None, album_id будет NULL
+            album_id = None 
+            if album_name: # Только если album_name не пустой/None
+                # Важно: альбом привязан к артисту, поэтому используем artist_id
+                cursor.execute("SELECT id FROM albums WHERE name = ? AND artist_id = ?",
+                               (album_name, artist_id))
+                album = cursor.fetchone()
+                if album is None:
+                    # Если альбома нет, создаем его. 'description' остается NULL по умолчанию.
+                    cursor.execute("INSERT INTO albums (name, artist_id) VALUES (?, ?)",
+                                   (album_name, artist_id))
+                    album_id = cursor.lastrowid
+                else:
+                    album_id = album['id']
+
+            # Обработка года: если year None или не число, устанавливаем 0 для NOT NULL поля в БД.
+            # Если year пришло с фронтенда как None (например, пустое поле),
+            # или если оно оказалось пустой строкой, превращаем его в 0.
+            actual_year = year if year is not None else 0
+            # Дополнительная проверка, если year пришло не в числовом формате (например, с фронтенда)
+            if not isinstance(actual_year, int):
+                try:
+                    actual_year = int(actual_year)
+                except (ValueError, TypeError):
+                    actual_year = 0 # Fallback to 0 if conversion fails
+
 
             # Добавляем песню
             cursor.execute(
                 "INSERT INTO songs (title, artist_id, genre_id, album_id, year) VALUES (?, ?, ?, ?, ?)",
-                (title, artist_id, genre_id, album_id, year)
+                (title, artist_id, genre_id, album_id, actual_year) # ИСПОЛЬЗУЕМ actual_year
             )
             conn.commit()
             print(f"Песня '{title}' успешно добавлена.")
+            return True # Возвращаем True при успехе
         except sqlite3.Error as e:
             print(f"Ошибка при добавлении песни: {e}")
             conn.rollback()
+            return False # Возвращаем False при ошибке
         finally:
             conn.close()
     else:
         print("Не удалось подключиться к базе данных.")
-
+        return False # Возвращаем False, если нет соединения
 def update_song(song_title, new_title=None, new_artist_name=None,
                new_genre_name=None, new_album_name=None, new_year=None):
     """Обновляет информацию о песне"""
